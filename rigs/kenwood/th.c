@@ -415,21 +415,32 @@ int
 th_set_vfo(RIG *rig, vfo_t vfo)
 {
     int retval;
-    char cmd[8],mem_num,vfoc;
+    char cmd[8], cvfo;
 
     rig_debug(RIG_DEBUG_TRACE, "%s: called\n", __func__);
-
+	cvfo='0';
 
     /* from thf7.c
      * The band must be active before selecting VFO or MEM.
      * The dilemma is whether MEM should be applied to Band A or Band B.
      * Remember, not all bands have the same capability
      * TODO: if (RIG_VFO_MEM) query current band with BC, then do appropriate VMC
-     * FABYS SOLUTION @TODO: if (VFOA)&&(VMC returns 1,2) then BC 0 else VMC 0,0
-     *                if (VFOB)&&(VMC returns 0,2) then BC 1 else VMC 1,0  
-
-
+	 * TODO SOLUTION: 
      */
+
+    /* set band */
+    
+	    strncpy(cmd, "BC", sizeof cmd);
+        retval = kenwood_transaction(rig, cmd, cmd, sizeof cmd);
+
+        if (retval != RIG_OK)
+        {
+            return retval;
+        }else{
+		cvfo=cmd[3];
+		}
+	
+	
     /* No "VMC" cmd on THD72A/THD74 */
     if (rig->caps->rig_model == RIG_MODEL_THD72A
             || rig->caps->rig_model == RIG_MODEL_THD74)
@@ -453,75 +464,43 @@ th_set_vfo(RIG *rig, vfo_t vfo)
 			default:
 				return kenwood_wrong_vfo(__func__, vfo);
 			}
-
 			return kenwood_transaction(rig, cmd, cmd, sizeof cmd);
+		} else 
+		{
+			return RIG_OK;
 		}
-
-    return RIG_OK;
-    } else {
-    
-        	strncpy(cmd, "BC", sizeof cmd);
-        	retval = kenwood_transaction(rig, cmd, cmd, sizeof cmd);
-
-        	if (retval != RIG_OK)
-       		{	
-            		return retval;
-        	}
-		vfoc = cmd[3];
-    }
-   
-	/* check_vfo using VMC */
-          
-     snprintf(cmd, sizeof cmd, "VMC %c",vfoc);
-     retval = kenwood_transaction(rig, cmd, cmd, sizeof cmd);
-	 if (retval != RIG_OK)
-        {
-            return retval;
-        }
-     
-     if (rig->caps->rig_model == RIG_MODEL_THF7E ||
-                rig->caps->rig_model == RIG_MODEL_THF6A)
-			{
-				mem_num='1';
-			}
-        else
-			{
-				mem_num='2';
-			}
+    } 
 		
-	
+
     /* set vfo */
     switch (vfo)
     {
     case RIG_VFO_A:
     case RIG_VFO_VFO:
     case RIG_VFO_MAIN:
-        if (cmd[4]=='1'&&cmd[6]==mem_num){
-			strncpy(cmd, "BC 0", sizeof cmd);
-		}else{
+		if (cvfo=='0'){
 			strncpy(cmd, "VMC 0,0", sizeof cmd);		
-		}
+		} else {strncpy(cmd, "BC 0", sizeof cmd);}
         break;
 
     case RIG_VFO_B:
     case RIG_VFO_SUB:
-        if (cmd[4]=='0'&&cmd[6]==mem_num){
-			strncpy(cmd, "BC 1", sizeof cmd);
-		}else{
-			strncpy(cmd, "VMC 1,0", sizeof cmd);		
-		}
-        break;
+	    if (cvfo=='1'){
+			strncpy(cmd, "VMC 1,0", sizeof cmd);
+        }else {strncpy(cmd, "BC 1", sizeof cmd);}
+		break;
 
     case RIG_VFO_MEM:
-        strncpy(cmd, "BC", sizeof cmd);
-        retval = kenwood_transaction(rig, cmd, cmd, sizeof cmd);
 
-        if (retval != RIG_OK)
+        if (rig->caps->rig_model == RIG_MODEL_THF7E ||
+                rig->caps->rig_model == RIG_MODEL_THF6A)
         {
-            return retval;
+            snprintf(cmd, sizeof cmd, "VMC %c,1", cvfo);
         }
-		
-		snprintf(cmd, sizeof cmd, "VMC %c,%c", cmd[3],mem_num);
+        else
+        {
+            snprintf(cmd, sizeof cmd, "VMC %c,2", cvfo);
+        }
 
         break;
 
