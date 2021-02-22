@@ -28,6 +28,7 @@
 #include <hamlib/rig.h>
 #include "kenwood.h"
 #include "th.h"
+#include "num_stdio.h"
 
 #if 1
 #define RIG_ASSERT(x)   if (!(x)) { rig_debug(RIG_DEBUG_ERR, "Assertion failed on line %i\n",__LINE__); abort(); }
@@ -49,6 +50,7 @@
                        RIG_FUNC_ARO)
 
 #define THD7_LEVEL_ALL (RIG_LEVEL_STRENGTH| \
+                        RIG_LEVEL_RAWSTR| \
                         RIG_LEVEL_SQL| \
                         RIG_LEVEL_AF| \
                         RIG_LEVEL_RF|\
@@ -74,6 +76,89 @@ static struct kenwood_priv_caps  thd7_priv_caps  =
     .cmdtrm =  EOM_TH,   /* Command termination character */
     .mode_table = td7_mode_table,
 };
+
+static rptr_shift_t thd7_rshf_table[3] =
+{
+    [0] = RIG_RPT_SHIFT_NONE,
+    [1] = RIG_RPT_SHIFT_PLUS,
+    [2] = RIG_RPT_SHIFT_MINUS,
+    //[3] = -7.6MHZ ????
+};
+
+
+
+// This functions could be moved in th.c. Now are tested only on THD7A(G)
+static int thd7_set_rptr_shft(RIG *rig, vfo_t vfo, rptr_shift_t rptr_shift)
+{
+    char cmd[8];
+    rig_debug(RIG_DEBUG_TRACE, "%s: called\n", __func__);
+
+    switch (rptr_shift)
+    {
+    case RIG_RPT_SHIFT_NONE:  strncpy(cmd, "SFT 0",sizeof cmd); break;
+
+    case RIG_RPT_SHIFT_PLUS:  strncpy(cmd, "SFT 1", sizeof cmd); break;
+
+    case RIG_RPT_SHIFT_MINUS: strncpy(cmd, "SFT 2", sizeof cmd); break;
+
+    default:
+        return  -RIG_EINVAL;
+    }
+
+    return kenwood_transaction(rig, cmd, cmd, sizeof cmd);
+}
+
+static int thd7_get_rptr_shft(RIG *rig, vfo_t vfo, rptr_shift_t *rptr_shift)
+{
+    int retval;
+    char cmd[8], rsinx;
+    rig_debug(RIG_DEBUG_TRACE, "%s: called\n", __func__);
+    
+    strncpy(cmd, "SFT", sizeof cmd);
+    retval = kenwood_transaction(rig, cmd, cmd, sizeof cmd);
+    if (retval != RIG_OK)
+        {
+                return retval;
+        }else{
+		rsinx=cmd[4];
+	}
+    *rptr_shift = (rsinx == '3') ? RIG_RPT_SHIFT_MINUS : thd7_rshf_table[(rsinx-'0')];
+    return RIG_OK;
+}
+
+
+static int thd7_set_rptr_offs(RIG *rig, vfo_t vfo, shortfreq_t offs)
+{
+    char cmd[20];
+    char offstr[9];
+    rig_debug(RIG_DEBUG_TRACE, "%s: called\n", __func__);
+    sprintf(offstr,"%ld",offs);
+    size_t llen=12-strlen(offstr);
+    strncpy(cmd,"OS 000000000",sizeof cmd);
+    cmd[llen]='\0';
+    strcat(cmd,offstr);
+    return kenwood_transaction(rig, cmd, cmd, sizeof cmd);
+}
+
+static int thd7_get_rptr_offs(RIG *rig, vfo_t vfo, shortfreq_t *offs)
+{
+    int retval;
+    char buf[64];
+
+    rig_debug(RIG_DEBUG_TRACE, "%s: called\n", __func__);
+    retval = kenwood_transaction(rig, "OS", buf, sizeof buf);
+
+    if (retval != RIG_OK)
+    {
+        return retval;
+    }
+    num_sscanf(buf, "OS %ld", offs);
+    return RIG_OK;
+}
+
+
+
+
 
 
 /*
@@ -199,7 +284,16 @@ const struct rig_caps thd7a_caps =
     .get_dcd =  th_get_dcd,
 
     .decode_event =  th_decode_event,
+
+    //experimental 
+    .set_rptr_shift = thd7_set_rptr_shft,
+    .get_rptr_shift = thd7_get_rptr_shft,
+    .set_rptr_offs = thd7_set_rptr_offs,
+    .get_rptr_offs = thd7_get_rptr_offs,
+
 };
+
+
 
 
 /* end of file */

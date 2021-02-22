@@ -424,21 +424,17 @@ th_set_vfo(RIG *rig, vfo_t vfo)
      * The band must be active before selecting VFO or MEM.
      * The dilemma is whether MEM should be applied to Band A or Band B.
      * Remember, not all bands have the same capability
-     * TODO: if (RIG_VFO_MEM) query current band with BC, then do appropriate VMC
-	 * TODO SOLUTION: 
      */
 
     /* set band */
-    
-	    strncpy(cmd, "BC", sizeof cmd);
-        retval = kenwood_transaction(rig, cmd, cmd, sizeof cmd);
-
-        if (retval != RIG_OK)
+    strncpy(cmd, "BC", sizeof cmd);
+    retval = kenwood_transaction(rig, cmd, cmd, sizeof cmd);
+    if (retval != RIG_OK)
         {
-            return retval;
+                return retval;
         }else{
 		cvfo=cmd[3];
-		}
+	}
 	
 	
     /* No "VMC" cmd on THD72A/THD74 */
@@ -1166,6 +1162,7 @@ th_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
 
     switch (level)
     {
+    case RIG_LEVEL_STRENGTH:
     case RIG_LEVEL_RAWSTR:
         sprintf(buf, "SM %c", vch);
 
@@ -1333,16 +1330,17 @@ int th_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
 {
     char vch, buf[12];
     vfo_t tvfo;
+    int retval;
 
     rig_debug(RIG_DEBUG_TRACE, "%s: called\n", __func__);
 
     tvfo = (vfo == RIG_VFO_CURR) ? rig->state.current_vfo : vfo;
 
+
     switch (tvfo)
     {
     case RIG_VFO_A:
     case RIG_VFO_VFO:
-    case RIG_VFO_MEM:
         vch = '0';
         break;
 
@@ -1350,6 +1348,17 @@ int th_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
         vch = '1';
         break;
 
+    case RIG_VFO_MEM:
+
+        strncpy(buf, "BC", sizeof buf);
+        retval = kenwood_transaction(rig, buf, buf, sizeof buf);
+        if (retval != RIG_OK)
+            {
+                return retval;
+        }else{
+		vch=buf[3];
+	}
+	
     default:
         return kenwood_wrong_vfo(__func__, vfo);
     }
