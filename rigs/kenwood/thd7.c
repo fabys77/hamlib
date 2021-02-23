@@ -156,7 +156,16 @@ static int thd7_get_rptr_offs(RIG *rig, vfo_t vfo, shortfreq_t *offs)
     return RIG_OK;
 }
 
-
+int
+thd7_set_ptt(RIG *rig, vfo_t vfo, ptt_t ptt)
+{
+    
+    //THD7A return TX <vcfo> ("TX 0" or "TX 1") 
+    char buf[6];
+    rig_debug(RIG_DEBUG_TRACE, "%s: called\n", __func__);
+    return kenwood_transaction(rig, (ptt == RIG_PTT_ON) ? "TX" : "RX", buf,
+                               sizeof buf);
+}
 
 
 
@@ -290,7 +299,8 @@ const struct rig_caps thd7a_caps =
     .get_rptr_shift = thd7_get_rptr_shft,
     .set_rptr_offs = thd7_set_rptr_offs,
     .get_rptr_offs = thd7_get_rptr_offs,
-
+//    .get_ptt  = thd7_get_ptt,
+    .set_ptt  = thd7_set_ptt,
 };
 
 
