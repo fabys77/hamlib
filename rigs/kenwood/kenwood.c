@@ -2276,6 +2276,9 @@ static int kenwood_get_power_minmax(RIG *rig, int *power_now, int *power_min,
 
     switch (rig->caps->rig_model)
     {
+    // TS480 can't handle the long command string
+    // We can treat it like the TS890S
+    case RIG_MODEL_TS480:
     // TS890S can't take power levels outside 5-100 and 5-25
     // So all we'll do is read power_now
     case RIG_MODEL_TS890S:
@@ -2319,7 +2322,7 @@ static int kenwood_get_power_minmax(RIG *rig, int *power_now, int *power_min,
 
     rig_debug(RIG_DEBUG_TRACE, "%s: retval=%d\n", __func__, retval);
 
-    if (RIG_IS_TS890S)
+    if (RIG_IS_TS890S || RIG_IS_TS480)
     {
         expval = 6;
     }
@@ -2336,7 +2339,7 @@ static int kenwood_get_power_minmax(RIG *rig, int *power_now, int *power_min,
         RETURNFUNC( -RIG_EPROTO);
     }
 
-    if (RIG_IS_TS890S)
+    if (RIG_IS_TS890S || RIG_IS_TS480)
     {
         n = sscanf(levelbuf, "PC%d;", power_now);
 
@@ -2385,6 +2388,7 @@ int kenwood_set_level(RIG *rig, vfo_t vfo, setting_t level, value_t val)
 
     if (RIG_LEVEL_IS_FLOAT(level))
     {
+        if (val.f > 1.0) RETURNFUNC(-RIG_EINVAL);
         kenwood_val = val.f * 255;
     }
     else
@@ -2673,7 +2677,7 @@ int kenwood_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
         break;
 
     case RIG_LEVEL_STRENGTH:
-        if (RIG_IS_TS590S || RIG_IS_TS590SG)
+        if (RIG_IS_TS590S || RIG_IS_TS590SG || RIG_IS_TS480)
         {
             cmd = "SM0";
             len = 3;
