@@ -52,7 +52,6 @@
 #define THD7_LEVEL_ALL (RIG_LEVEL_STRENGTH| \
                         RIG_LEVEL_RAWSTR| \
                         RIG_LEVEL_SQL| \
-                        RIG_LEVEL_AF| \
                         RIG_LEVEL_RF|\
                         RIG_LEVEL_MICGAIN)
 
@@ -299,7 +298,6 @@ const struct rig_caps thd7a_caps =
     .get_rptr_shift = thd7_get_rptr_shft,
     .set_rptr_offs = thd7_set_rptr_offs,
     .get_rptr_offs = thd7_get_rptr_offs,
-//    .get_ptt  = thd7_get_ptt,
     .set_ptt  = thd7_set_ptt,
 };
 

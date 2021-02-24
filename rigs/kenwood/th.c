@@ -1138,7 +1138,7 @@ th_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
 {
     char vch, buf[10], ackbuf[20];
     int retval, v;
-    unsigned int l;
+    int l;
 
     vfo_t tvfo;
 
@@ -1184,6 +1184,11 @@ th_get_level(RIG *rig, vfo_t vfo, setting_t level, value_t *val)
         }
 
         val->i = l;
+
+        if (level==RIG_LEVEL_STRENGTH){
+    	    val->i = (val->i * 10) - 50;
+        }
+
         break;
 
     case RIG_LEVEL_SQL:
